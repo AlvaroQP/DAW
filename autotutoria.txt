@@ -1,0 +1,174 @@
+CREATE TABLE directores(
+id_director INT NOT NULL PRIMARY KEY,
+nombre VARCHAR(15) DEFAULT NULL,
+apellidos VARCHAR(50) DEFAULT NULL,
+sueldo NUMBER DEFAULT NULL
+);
+
+INSERT INTO directores(id_director, nombre, apellidos, sueldo)
+VALUES(12, 'Alberto', 'Pérez Martín', 1800);
+INSERT INTO directores(id_director, nombre, apellidos, sueldo)
+VALUES(13, 'Pedro', 'García Martín', 1900);
+INSERT INTO directores(id_director, nombre, apellidos, sueldo)
+VALUES(15, 'Antonio', 'López López', 1500);
+INSERT INTO directores(id_director, nombre, apellidos, sueldo)
+VALUES(20, 'Silvia', 'Martín Martín', 1300);
+
+CREATE TABLE sucursales(
+nsucursal NUMBER NOT NULL PRIMARY KEY,
+nombre VARCHAR(50) DEFAULT NULL,
+direccion VARCHAR(50) DEFAULT NULL,
+id_director NUMBER DEFAULT NULL REFERENCES directores(id_director)
+);
+
+INSERT INTO sucursales(nsucursal, nombre, direccion, id_director)
+VALUES(1001, 'Sucursal Centro', 'Avd. del Estilo, 45', 12);
+INSERT INTO sucursales(nsucursal, nombre, direccion, id_director)
+VALUES(1002, 'Sucursal Oeste', 'Avd. Mediterráneo, 14', 15);
+INSERT INTO sucursales(nsucursal, nombre, direccion, id_director)
+VALUES(1003, 'Sucursal Este', 'Calle Martínez, 45', 20);
+INSERT INTO sucursales(nsucursal, nombre, direccion, id_director)
+VALUES(1004, 'Sucursal Norte', 'Calle Especias, 23', NULL);
+
+CREATE TABLE clientes(
+DNI CHAR(9) NOT NULL PRIMARY KEY,
+nombre VARCHAR(15) NOT NULL,
+apellidos VARCHAR(50) NOT NULL,
+direccion VARCHAR(50) DEFAULT '',
+fecha_de_alta DATE DEFAULT NULL,
+credito NUMBER DEFAULT NULL,
+nsucursal NUMBER DEFAULT NULL REFERENCES sucursales(nsucursal)
+);
+
+INSERT INTO clientes(DNI, nombre, apellidos, direccion, fecha_de_alta, credito,
+nsucursal)
+VALUES('30515454K', 'Ana', 'Martín Martín', 'Calle del Socorro, 1', '18-
+JAN-2018', 1500, 1001);
+
+INSERT INTO clientes(DNI, nombre, apellidos, direccion, fecha_de_alta, credito,
+nsucursal)
+VALUES('33358796A', 'Julia', 'López Ruiz', 'Calle Martinez, 76', '17-SEP-2014',
+600, 1001);
+
+INSERT INTO clientes(DNI, nombre, apellidos, direccion, fecha_de_alta, credito,
+nsucursal)
+VALUES('78458784B', 'Antonio', 'Castillo Mentas', 'Calle Soles, 14', NULL, 500,
+1002);
+
+-- COMBINA 2+ TABLAS => DEVUELVE TODAS LAS FILAS QUE CUMPLEN LA CONDICIÓN DE UNIÓN
+SELECT directores.nombre || ' ' || directores.apellidos AS DIRECTOR,
+sucursales.nombre AS NOMBRE_SUCURSAL,
+clientes.nombre || ' ' || clientes.apellidos AS CLIENTES
+FROM directores
+INNER JOIN sucursales
+ON directores.id_director = sucursales.id_director
+INNER JOIN clientes
+ON clientes.nsucursal = sucursales.nsucursal;
+
+SELECT directores.nombre AS NOMBRE_DIRECTOR,
+directores.apellidos AS APELLIDOS_DIRECTOR,
+sucursales.nombre AS SUCURSAL
+FROM directores
+RIGHT OUTER JOIN sucursales
+ON directores.id_director = sucursales.id_director;
+
+-- FULL OUTER JOIN: Devuelve TODAS las filas de las tablas LEFT y RIGHT, y donde no se
+-- cumple la condición de unión coloca nulos
+SELECT directores.nombre AS NOMBRE_DIRECTOR,
+directores.apellidos AS APELLIDOS_DIRECTOR,
+sucursales.nombre AS SUCURSAL
+FROM directores
+FULL OUTER JOIN sucursales
+ON directores.id_director = sucursales.id_director;
+
+-- UNION
+-- Combina los resultados de 2+ tablas en una única tabla
+SELECT clientes.nombre, clientes.apellidos
+FROM clientes
+UNION ALL
+SELECT directores.nombre, directores.apellidos
+FROM directores
+ORDER BY apellidos DESC;
+
+-- INTERSECT
+-- Devuelve los valores comunes a ambas tablas
+SELECT clientes.nombre
+FROM clientes
+INTERSECT
+SELECT directores.nombre
+FROM directores;
+
+-- MINUS (Diferencia)
+-- Devuelve los valores que están en la primera consulta, pero NO en la segunda
+SELECT directores.nombre
+FROM directores
+MINUS
+SELECT clientes.nombre
+FROM clientes;
+
+-- FUNCIONES DE AGRUPACIÓN
+-- Actúan sobre un grupo de filas para obtener un valor
+SELECT ROUND(AVG(salary)) AS SALARIO_MEDIO
+FROM hr.employees;
+
+-- COUNT(*) -- incluye nulos
+-- COUNT(columna) -- cuenta filas cuya expresión no es nula
+SELECT COUNT(employees.commission_pct) AS PORCENTAJE_COMISIÓN
+FROM hr.employees;
+
+-- CONSULTAS AGRUPADAS
+SELECT jobs.job_title,
+COUNT(*) AS TOTAL_EMPLEADOS, -- funciones de agrupación
+MAX(employees.salary) AS SALARIO_MAYOR, -- funciones de agrupación
+MIN(employees.salary) AS SALARIO_MENOR, -- funciones de agrupación
+AVG(employees.salary) AS SALARIO_MEDIO, -- funciones de agrupación
+SUM(employees.salary) AS SALARIO_TOTAL -- funciones de agrupación
+FROM hr.jobs
+INNER JOIN hr.employees
+ON jobs.job_id = employees.job_id -- condición de unión
+WHERE jobs.job_title <> 'President'
+GROUP BY jobs.job_title -- columna de agrupación
+HAVING AVG(employees.salary) > 10000
+ORDER BY MAX(employees.salary) DESC;
+
+-- WHERE filtra filas individuales
+-- HAVING filtra grupos (funciones de agrupación)
+-- TEST DE COMPARACIÓN ( < > <= >= <> = )
+-- Compara el valor de una expresión con un valor único que produce la subconsulta
+SELECT employees.first_name || ' ' || employees.last_name AS NOMBRE,
+employees.salary AS SALARIO
+FROM hr.employees
+WHERE employees.salary >= 10000
+AND employees.salary < (SELECT MAX(employees.salary) FROM hr.employees)
+ORDER BY employees.salary DESC;
+
+-- TEST DE PERTENENCIA A CONJUNTO (IN)
+-- Comprueba si el valor de una expresión está dentro del conjunto de valores producido por una subconsulta.
+SELECT clientes.nombre || ' ' || clientes.apellidos AS CLIENTE
+FROM clientes
+WHERE clientes.nombre IN (SELECT directores.nombre FROM directores);
+
+-- TEST DE EXISTENCIA (EXISTS)
+-- Comprueba si la subconsulta produce alguna fila de resultados.
+SELECT jobs.job_title AS PUESTO
+FROM hr.jobs
+WHERE EXISTS (SELECT *
+FROM hr.employees
+WHERE jobs.job_id = employees.job_id
+AND employees.salary > 12000);
+
+SELECT clientes.nombre AS NOMBRE_CLIENTE,
+clientes.apellidos AS APELLIDOS_CLIENTE
+FROM clientes
+WHERE clientes.credito < ANY
+(SELECT clientes.credito
+FROM clientes
+WHERE clientes.nsucursal = '1001');
+
+SELECT clientes.nombre AS NOMBRE_CLIENTE,
+clientes.apellidos AS APELLIDOS_CLIENTE
+FROM clientes
+WHERE clientes.credito < ALL
+(SELECT clientes.credito
+FROM clientes
+WHERE clientes.nsucursal = '1001');
